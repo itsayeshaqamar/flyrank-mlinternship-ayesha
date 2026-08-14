@@ -110,14 +110,17 @@ The final baseline and model must be evaluated on the same data and metric.
 
 ### Baseline results
 
-The final notebook should be treated as the source of truth for the final baseline metrics.
+The final notebook should be treated as the source of truth for the final evaluation metrics.
 
-- **Precision@K:** `[Insert final notebook value]`
-- **ROC-AUC:** `[Insert final notebook value, if evaluated]`
-- **Average Precision:** `[Insert final notebook value, if evaluated]`
-- **Base rate:** `[Insert final notebook value]`
+The main metrics are:
 
-Only values from the fresh final capstone run should be reported here.
+- Precision@20
+- Precision@50
+- ROC-AUC
+- Average Precision
+- Proxy-label base rate
+
+Precision@K is especially relevant because the operational use case assumes that only a limited number of pages can be reviewed at a time.
 
 ## 4. Model / analysis
 
@@ -200,22 +203,6 @@ The final evaluation uses the split documented in the completed capstone noteboo
 
 The evaluation data is kept separate from the observations used to develop the final scoring/modeling approach.
 
-The exact final split should be reported exactly as implemented in the final notebook.
-
-**Final split:** `[Insert exact final notebook split]`
-
-### Metrics
-
-The final notebook should be treated as the source of truth for the final evaluation metrics.
-
-| Metric | Baseline | Final model / scoring approach |
-|---|---:|---:|
-| Precision@20 | `[Value]` | `[Value]` |
-| Precision@50 | `[Value]` | `[Value]` |
-| ROC-AUC | `[Value]` | `[Value]` |
-| Average Precision | `[Value]` | `[Value]` |
-
-Only metrics actually calculated in the final notebook should be included.
 
 ### Base rate
 
