@@ -523,7 +523,8 @@ The notebook installs the dataset-access dependencies directly with:
 ```bash
 pip install datasets huggingface_hub duckdb
 
-## 9. Acknowledgments & Data Credit
+
+### 9. Acknowledgments & Data Credit
 
 Built on the **FlyRank ML Internship dataset** provided for this capstone analysis.
 
@@ -531,18 +532,9 @@ Built on the **FlyRank ML Internship dataset** provided for this capstone analys
 
 Crediting the data source is standard research practice and identifies the dataset used for this analysis. The public-facing report does not include client-identifying details, private queries, credentials, or other restricted information.
 
----
-
-> **Claims checklist before submitting:** observed / measured / directional / decision-support
->
-> **Metrics vs. base rate:** The test-set priority-positive rate is **48.44%**, while the majority-class rate is **51.56%**. Precision@10% should therefore be interpreted relative to this base rate rather than as a standalone number. The Random Forest achieved **0.8473 ROC-AUC** and **0.8423 Average Precision**, compared with **0.7583** and **0.6583** for the Logistic Regression baseline.
->
-> **Language:** Claims throughout this report use observed, measured, directional, and decision-support framing where appropriate.
->
-> **Causal claims:** No causal claims are made because the dataset does not contain a causal experiment or verified post-refresh outcome.
->
-> **Google:** This project does not claim to predict Google's algorithm.
->
-> **Privacy:** No client-identifying details, private queries, credentials, or restricted information are included in the public-facing report.
->
-> **Numbers:** All reported metrics, split sizes, bottleneck counts, target rates, priority tiers, and recommendation counts above are taken from the completed capstone notebook.
+**Claims checklist before submitting:** observed / measured / directional / decision-support
+ **Metrics vs. base rate:** The test-set priority-positive rate is **48.44%**, while the majority-class rate is **51.56%**. Precision@10% should therefore be interpreted relative to this base rate rather than as a standalone number. The Random Forest achieved **0.8473 ROC-AUC** and **0.8423 Average Precision**, compared with **0.7583** and **0.6583** for the Logistic Regression baseline.
+**Language:** Claims throughout this report use observed, measured, directional, and decision-support framing where appropriate.
+**Causal claims:** No causal claims are made because the dataset does not contain a causal experiment or verified post-refresh outcome. **Google:** This project does not claim to predict Google's algorithm.
+**Privacy:** No client-identifying details, private queries, credentials, or restricted information are included in the public-facing report.
+**Numbers:** All reported metrics, split sizes, bottleneck counts, target rates, priority tiers, and recommendation counts above are taken from the completed capstone notebook.
