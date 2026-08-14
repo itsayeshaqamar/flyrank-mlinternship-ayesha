@@ -520,7 +520,6 @@ The notebook uses Python with:
 
 The notebook installs the dataset-access dependencies directly with:
 
-```bash
 pip install datasets huggingface_hub duckdb
 
 
