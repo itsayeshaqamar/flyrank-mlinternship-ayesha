@@ -2,360 +2,477 @@
 
 - **Author:** Ayesha Qamar
 - **Lane:** CTR / Engagement Opportunity Scoring
-- **Repo:** `itsayeshaqamar/flyrank-mlinternship-ayesha`
+- **Repo:** https://github.com/itsayeshaqamar/flyrank-mlinternship-ayesha
 - **Date:** 15 August 2026
 
-> This report documents the completed capstone analysis. The project is framed as a decision-support and prioritization system rather than a causal prediction of future content performance.
+> This report documents the completed capstone analysis. The project is framed as an observed, directional decision-support system for prioritizing content pages for human review rather than a causal prediction of future content performance.
 
 ## 0. Abstract
 
-This project asks how observable content-performance signals can be combined to prioritize which content pages deserve human review first when content teams have limited capacity. The analysis uses page-level content-performance data covering visibility, clicks, sessions, engagement, and related content signals. The methodology combines diagnostic bottleneck indicators into a structured priority score and review framework, treating refresh priority as a proxy because the dataset does not contain an observed ground-truth outcome showing which pages actually required a refresh or improved after one. The analysis identified visibility, click, session, and engagement bottlenecks and produced a practical four-level priority framework ranging from Monitor to Urgent Review. The resulting output is intended as directional decision-support that helps human reviewers focus attention on pages with stronger evidence of performance bottlenecks rather than automatically deciding which pages should be refreshed.
+This project asks whether observable search-performance and engagement signals can be combined into a reliable scoring framework for prioritizing content pages for review when review capacity is limited. The analysis uses the FlyRank pseudonymized warehouse release `flyrank_pseudonymized_warehouse_release_v20260703`, with daily facts running through June 30, 2026, and aggregates the available performance data to 427,292 page-level observations. The methodology creates data-driven bottleneck indicators for visibility, clicks, sessions, and engagement, defines a proxy priority target as pages with at least two detected bottlenecks, and compares a Random Forest against a Logistic Regression baseline using a client-grouped 80/20 held-out split. On the held-out test set, the Random Forest achieved ROC-AUC 0.8473, Average Precision 0.8423, and Precision@10% 0.9878, compared with 0.7583, 0.6583, and 0.6461 for the baseline. The resulting ranking and priority tiers are intended to help human reviewers focus limited content-review effort on pages showing stronger evidence of observable performance bottlenecks.
 
 ## 1. Problem framing
 
 The decision this project supports is:
 
-**Which content pages should be reviewed first when a content team has limited time and a large number of pages to evaluate?**
+> **Which content pages should a content team review first when review capacity is limited?**
 
-The unit of analysis is a **content page** with its associated performance and engagement signals.
+The unit of analysis is one **content page**, represented internally by an anonymized content identifier and associated with aggregated search-performance and engagement signals.
 
-The primary output is a **refresh/opportunity priority score**, which is translated into four practical priority tiers:
+The output is a **priority probability and ranked review queue**, which is translated into four practical priority tiers:
 
-- Monitor
-- Review
-- High Priority
-- Urgent Review
+- **Monitor**
+- **Review**
+- **High Priority**
+- **Urgent Review**
 
-The human action supported by the output is to start with the highest-priority pages, inspect the underlying bottleneck signals, and then decide whether further investigation or a content refresh is appropriate.
+The human action is to use the ranking to decide which pages deserve earlier review, inspect the underlying performance bottlenecks, and then determine whether a content, technical, or editorial intervention is appropriate.
 
-The cost of a wrong call is mainly an allocation-of-effort problem. A false positive can cause an editor to spend time reviewing a page that does not need immediate attention. A false negative can leave a potentially important page unreviewed while limited editorial capacity is spent elsewhere.
+The cost of a wrong call is primarily an allocation-of-effort problem. A false positive can cause an editor to spend limited time reviewing a page that does not require immediate attention. A false negative can cause a page with stronger observable evidence of performance bottlenecks to receive less attention while editorial resources are spent elsewhere.
 
-Data and ML help because content performance cannot be fully represented by one simple threshold. Visibility, clicks, sessions, engagement, and related performance signals describe different parts of the page-performance journey. Combining these signals provides a more structured way to rank pages for human review.
+Data and ML help because content performance is not represented by one universal metric. Visibility, clicks, sessions, and engagement capture different parts of the page-performance journey. A structured scoring system can combine these observable signals and produce a consistent review order instead of requiring a reviewer to manually inspect every page.
 
-The project therefore produces **decision-support**, not an automatic refresh decision.
+The project therefore supports **content-review prioritization**, not automatic refresh decisions and not prediction of Google's ranking algorithm.
 
 ## 2. Data safety
 
-The analysis uses the project-provided content-performance data containing page-level performance, traffic, engagement, and content-related signals.
+The analysis uses the **FlyRank pseudonymized warehouse release**:
 
-The main analytical signals include:
+`flyrank_pseudonymized_warehouse_release_v20260703`
 
-- Search impressions
-- Search clicks
-- Search position
-- Pageviews
-- Sessions
-- Users
-- Engaged sessions
-- Engagement time
-- Organic sessions
-- AI-driven sessions
-- Scroll events
-- CTR and derived performance measures
-- Engagement-related measures
-- Content and freshness attributes where available
+The notebook documents that the release was exported on July 3, 2026, and that the freshest daily facts in the release run through June 30, 2026.
 
-The daily performance data was aggregated to the page level before downstream feature engineering, bottleneck identification, scoring, and prioritization.
+The analysis uses the daily content-performance table and aggregates the available performance records to one row per client and content page.
 
-### Deliberately excluded fields
+The resulting aggregated page-level dataset contains:
 
-The following information is deliberately excluded from predictive features or public outputs:
+- **427,292 page-level observations**
+- **13 aggregated fields before derived metrics**
 
-- Client identifiers
-- Content identifiers as predictive features
-- URLs
+The aggregated performance fields include:
+
+- `impressions`
+- `clicks`
+- `sum_position`
+- `pageviews`
+- `sessions`
+- `users`
+- `engaged_sessions`
+- `engagement_sec`
+- `organic_sessions`
+- `ai_sessions`
+- `scroll_events`
+
+The notebook derives:
+
+- `ctr`
+- `engagement_rate`
+- `avg_position`
+- `organic_session_rate`
+- `ai_session_rate`
+
+The final bottleneck framework uses four data-driven thresholds based on the positive-only 25th percentile of the corresponding observed distributions:
+
+| Signal | Threshold |
+|---|---:|
+| Visibility / impressions | 20.000000 |
+| CTR | 0.001554 |
+| Sessions | 2.000000 |
+| Engagement rate | 0.030140 |
+
+The notebook explicitly handles unavailable metrics by filling unavailable GA4 metrics with zero and unavailable average position with zero after determining that no impressions were available.
+
+### Exclusions
+
+The following information is excluded from modeling or public reporting:
+
+- Client names
 - Domains
-- Raw search queries
-- Credentials and access tokens
-- Private repository paths
-- Existing priority scores
-- Existing health/action flags
-- Other fields that directly encode a business decision
+- URLs
+- Private search queries
+- Credentials
+- Raw identifying content information
+- Existing business decision flags
+- Fields that directly define the proxy priority target
 
-Pseudonymous IDs are used only for grouping or internal data handling and are not used as predictive features.
-
-This prevents identifiers from acting as accidental predictive variables and avoids exposing client- or page-identifying information in the public-facing analysis.
+Pseudonymous identifiers such as `client_hash_id` and `content_hash_id` are used for grouping, joining, ranking, and internal data handling but are not used as model features.
 
 ### Leakage risks
 
-Special attention was given to fields that may already contain information derived from the outcome or an existing business decision.
+The priority target is constructed from the following variables:
 
-In particular, fields such as:
+- `impressions`
+- `clicks`
+- `ctr`
+- `sessions`
+- `engagement_rate`
+- `bottleneck_score`
 
-- `trend_direction`
-- `trend_pct`
-- Existing priority scores
-- Existing health/action flags
-- Other label-derived fields
+These target-defining variables are deliberately excluded from the model feature list.
 
-are excluded when they would directly encode the target or proxy outcome.
+The final model uses:
 
-The refresh/opportunity target is treated as a **proxy**, not as an observed ground-truth label.
+- `avg_position`
+- `pageviews`
+- `users`
+- `organic_sessions`
+- `ai_sessions`
+- `ai_session_rate`
+- `scroll_events`
 
-The public-facing `work/` content should contain no client-identifying details, private queries, credentials, restricted URLs, or private dataset access paths.
+The notebook performs an explicit leakage check between the model features and target-defining variables.
+
+The result was:
+
+`Leakage overlap: set()`
+
+The notebook then asserts that the overlap is empty and reports:
+
+`Leakage check passed.`
+
+Label-derived fields such as `trend_direction` and `trend_pct`, where present in the underlying data, are not used as model features.
+
+The public-facing work is intended to contain no client-identifying information, private queries, credentials, or restricted business information.
 
 ## 3. Baseline
 
-The transparent baseline is a simple rule-based prioritization approach using observable performance weakness.
+The transparent baseline is a **Logistic Regression** classifier.
 
-A basic CTR/performance threshold provides an interpretable starting point because it can be implemented without machine learning and is easy for a reviewer to understand.
+The baseline uses:
 
-The limitation of a flat rule is that it does not fully account for the context in which the performance occurs. For example, the same CTR value can have different meanings depending on search visibility and position.
+- StandardScaler
+- Logistic Regression
+- `max_iter=1000`
+- `class_weight="balanced"`
+- `random_state=42`
 
-The final analysis therefore uses multiple performance diagnostics rather than relying on one isolated threshold.
+The baseline provides a transparent linear comparison against the main Random Forest model. It is a fair comparison because both models use the same seven non-target-defining features and are evaluated on exactly the same client-held-out test set.
 
-The baseline is a fair comparison because it uses observable signals available to the same analytical workflow and represents a realistic simple alternative to a more structured scoring approach.
-
-The final baseline and model must be evaluated on the same data and metric.
+The baseline is not intended to represent a production system. It provides a simple reference for measuring whether the more flexible Random Forest captures additional ranking signal.
 
 ### Baseline results
 
-The final notebook should be treated as the source of truth for the final evaluation metrics.
+On the held-out client test set, the Logistic Regression baseline achieved:
 
-The main metrics are:
+| Metric | Logistic Regression |
+|---|---:|
+| ROC-AUC | 0.7583 |
+| Average Precision | 0.6583 |
+| Precision@10% | 0.6461 |
 
-- Precision@20
-- Precision@50
-- ROC-AUC
-- Average Precision
-- Proxy-label base rate
+The test-set positive proxy rate was **48.44%**, meaning the majority class represented **51.56%** of the test observations.
 
-Precision@K is especially relevant because the operational use case assumes that only a limited number of pages can be reviewed at a time.
+This base-rate context is important when interpreting Precision@10%. The baseline Precision@10% of 0.6461 is above the 48.44% positive rate, while the Random Forest reaches 0.9878.
 
 ## 4. Model / analysis
 
-The project is a **scoring and prioritization analysis** designed to rank pages according to the strength of observable performance bottlenecks.
+The main model is a **Random Forest Classifier** used to rank pages according to their estimated probability of belonging to the defined priority class.
 
-The output is a continuous priority signal rather than a simple automatic "refresh" or "do not refresh" decision.
+The Random Forest configuration is:
 
-The workflow can be summarized as:
+- `n_estimators=200`
+- `max_depth=12`
+- `min_samples_leaf=20`
+- `class_weight="balanced"`
+- `random_state=42`
+- `n_jobs=-1`
 
-**Performance signals → bottleneck indicators → bottleneck score → priority score → priority tier → human review**
+The seven model features are:
 
-### Feature groups
+1. `avg_position`
+2. `pageviews`
+3. `users`
+4. `organic_sessions`
+5. `ai_sessions`
+6. `ai_session_rate`
+7. `scroll_events`
 
-The analysis uses observable page-level signals from the following groups:
+The following variables are intentionally left out because they directly define the proxy target:
 
-**Visibility**
+- `impressions`
+- `clicks`
+- `ctr`
+- `sessions`
+- `engagement_rate`
+- `bottleneck_score`
 
-- Impressions
-- Search exposure
-- Search position/context
+Client and content identifiers are also excluded from the feature matrix.
 
-**Clicks**
+### Bottleneck construction
 
-- Clicks
-- CTR
-- Click-related diagnostics
+Four interpretable bottleneck indicators are created.
 
-**Sessions**
+A **visibility bottleneck** is identified when a page has positive impressions but impressions are below the data-driven visibility threshold.
 
-- Pageviews
-- Sessions
-- Users
-- Organic sessions
-- AI-driven sessions where available
+A **click bottleneck** is identified when a page has impressions and CTR is below the data-driven CTR threshold.
 
-**Engagement**
+A **session diagnostic** is identified when a page has sessions but sessions are below the data-driven session threshold.
 
-- Engaged sessions
-- Engagement time
-- Engagement-related measures
-- Scroll events
-- Scroll-related diagnostics
+An **engagement diagnostic** is identified when a page has sessions but engagement rate is below the data-driven engagement threshold.
 
-**Content and freshness**
+The four binary indicators are summed into a `bottleneck_score`.
 
-- Content age
-- Freshness/update-related attributes
-- Other available page-level content characteristics
+The observed bottleneck-score distribution is:
 
-### Features intentionally left out
-
-The following are intentionally excluded:
-
-- Client identifiers
-- Content identifiers as predictive features
-- Private URLs and domains
-- Raw queries
-- Credentials
-- Existing business priority scores
-- Existing decision flags
-- Label-derived fields such as `trend_direction` and `trend_pct` where they would create leakage
+| Bottleneck score | Rows | Percentage |
+|---:|---:|---:|
+| 0 | 150,340 | 35.18% |
+| 1 | 125,467 | 29.36% |
+| 2 | 110,882 | 25.95% |
+| 3 | 28,770 | 6.73% |
+| 4 | 11,833 | 2.77% |
 
 ### Target / proxy definition
 
-> The refresh/opportunity proxy identifies pages showing measurable evidence of performance bottlenecks across visibility, clicks, sessions, or engagement, and the resulting signals are combined into a directional priority score for human review.
+The project defines the priority proxy as:
 
-This is a proxy because the dataset does not contain an observed outcome showing that a page was refreshed and subsequently improved.
+> **A page is a priority case when its observed bottleneck score is greater than or equal to 2.**
 
-The score therefore indicates that a page matches the defined evidence pattern; it does not prove that the page will improve after a refresh.
+This produces:
+
+| Priority target | Rows |
+|---|---:|
+| 0 | 275,807 |
+| 1 | 151,485 |
+
+The overall positive proxy rate is **35.45%**.
+
+This is a constructed target rather than an observed `refresh_needed` label or post-refresh outcome.
+
+The model therefore learns to discriminate pages matching the defined diagnostic priority pattern; it does not predict whether a page will actually improve after a refresh.
 
 ## 5. Evaluation
 
-The evaluation focuses on whether the prioritization workflow can place pages matching the defined opportunity/bottleneck proxy near the top of the review queue.
+The evaluation uses a **client-grouped train/test split**.
 
-The primary ranking-oriented metric is **Precision@K**, because the practical use case assumes that editors can only review a limited number of pages at a time.
+`GroupShuffleSplit` is used with:
 
-### Evaluation split
+- `n_splits=1`
+- `test_size=0.20`
+- `random_state=42`
 
-The final evaluation uses the split documented in the completed capstone notebook.
+The grouping variable is `client_hash_id`.
 
-The evaluation data is kept separate from the observations used to develop the final scoring/modeling approach.
+The resulting split is:
 
+| Split | Shape | Priority rate |
+|---|---:|---:|
+| Training | 363,254 × 7 | 33.16% |
+| Test | 64,038 × 7 | 48.44% |
 
-### Base rate
+The notebook confirms:
 
-The proxy-label base rate should be reported alongside Precision@K or accuracy.
+**Clients shared between train/test: 0**
 
-**Proxy-positive rate:** `[Insert final notebook value]`
+This grouping prevents pages belonging to the same client from appearing in both training and testing data, reducing the risk that client-specific patterns are learned during training and then evaluated on the same client.
 
-This is important because a high Precision@K can be less informative when the positive class is already very common.
+The test set has a higher positive proxy rate than the training set:
 
-The final result should therefore be interpreted relative to both the base rate and the transparent baseline.
+- Training: **33.16%**
+- Test: **48.44%**
+
+This distribution shift is an important limitation when interpreting the evaluation.
+
+### Metrics
+
+Both models were evaluated on the same held-out client test set.
+
+| Model | ROC-AUC | Average Precision | Precision@10% |
+|---|---:|---:|---:|
+| Logistic Regression | 0.7583 | 0.6583 | 0.6461 |
+| Random Forest | 0.8473 | 0.8423 | 0.9878 |
+
+The Random Forest improved over the Logistic Regression baseline by:
+
+- **ROC-AUC:** 0.7583 → 0.8473
+- **Average Precision:** 0.6583 → 0.8423
+- **Precision@10%:** 0.6461 → 0.9878
+
+The largest practical result is Precision@10%. Among the highest-ranked 10% of the held-out test pages, **98.78% were positive priority cases under the constructed proxy target**.
+
+The relevant test-set positive base rate is **48.44%**, while the majority-class rate is **51.56%**.
+
+Therefore, the 98.78% Precision@10% result should be understood as strong concentration of the constructed priority cases at the top of the model's ranking, rather than as evidence of future refresh success.
 
 ### Error analysis
 
-The main potential error is contextual mis-prioritization.
+The primary error type is contextual mis-prioritization.
 
-A page may appear weak under one isolated signal while not representing the same review opportunity as another page with stronger visibility or a different engagement profile.
+Because the target is constructed from observed bottleneck conditions, a page can be classified as a priority case because it satisfies the project's diagnostic definition even when an editor might determine that no content intervention is necessary after considering business, technical, seasonal, or editorial context.
 
-The bottleneck framework reduces this problem by separating different types of weakness instead of treating all under-performance as one condition.
+The test-set distribution shift is another important source of uncertainty. The priority rate is 48.44% in the test set compared with 33.16% in training, showing that the held-out clients differ meaningfully from the training clients.
 
-Pages with limited traffic or exposure can also produce unstable rates. Therefore, reviewers should consider data sufficiency and context before acting on a high priority score.
+The model also produces tied probabilities for multiple pages. Consequently, small differences between adjacent ranks should not be interpreted as meaningful differences in expected impact.
 
-### What the evaluation cannot claim
+### What the evaluation does not establish
 
-The evaluation does not establish:
+The evaluation does not establish that:
 
-- That refreshing a page will improve CTR.
-- That refreshing a page will increase traffic.
-- That refreshing a page will improve rankings.
-- That the model predicts Google's algorithm.
-- That the score causes business improvement.
-- That every high-priority page will benefit from a refresh.
+- Refreshing a prioritized page will improve CTR.
+- Refreshing a prioritized page will increase traffic.
+- Refreshing a prioritized page will improve rankings.
+- The model predicts Google's ranking algorithm.
+- The priority score causes business improvement.
+- Every high-priority page will benefit from a content refresh.
 
-Those claims would require observed post-refresh outcomes, experimentation, or an appropriate causal evaluation design.
+These claims would require observed post-refresh outcomes, an experiment, or another appropriate causal evaluation design.
 
 ## 6. Interpretation
 
-The analysis identified four major bottleneck categories.
+The analysis identified four observed performance bottleneck categories.
 
-### Visibility bottleneck
+| Bottleneck | Pages |
+|---|---:|
+| Visibility bottleneck | 76,675 |
+| Click bottleneck | 197,516 |
+| Session diagnostic | 39,192 |
+| Engagement diagnostic | 167,490 |
 
-**861,968** observations were identified with a visibility-related bottleneck.
+The click bottleneck is the most frequently observed bottleneck under the defined threshold, followed by engagement, visibility, and session diagnostics.
 
-This indicates pages where the available visibility evidence suggests that exposure is an important part of the performance diagnosis.
+These counts are not mutually exclusive because a page can satisfy multiple bottleneck conditions.
 
-### Click bottleneck
+### Bottleneck score interpretation
 
-**3,193,080** observations were identified with a click-related bottleneck.
+The bottleneck score counts how many of the four diagnostic conditions are simultaneously present.
 
-This indicates pages where the available click evidence suggests that visibility is not translating into clicks as expected under the defined diagnostic rules.
-
-### Session diagnostic bottleneck
-
-**107,115** observations were identified with a session-related diagnostic.
-
-This provides an additional view of page traffic beyond search visibility and clicks.
-
-### Engagement diagnostic bottleneck
-
-**191,330** observations were identified with an engagement-related diagnostic.
-
-This captures cases where clicks or sessions do not necessarily translate into strong downstream engagement.
-
-### Bottleneck score
-
-The individual diagnostics were combined into a bottleneck score.
+The final distribution was:
 
 | Bottleneck score | Rows |
 |---:|---:|
-| 0 | 6,408,062 |
-| 1 | 2,530,950 |
-| 2 | 884,555 |
-| 3 | 17,811 |
+| 0 | 150,340 |
+| 1 | 125,467 |
+| 2 | 110,882 |
+| 3 | 28,770 |
+| 4 | 11,833 |
 
-The score can be interpreted as the number of defined bottleneck conditions detected for an observation:
+The highest score, 4, represents observations meeting all four defined bottleneck conditions.
 
-- **0:** No detected bottleneck.
-- **1:** One detected bottleneck.
-- **2:** Two detected bottlenecks.
-- **3:** Three detected bottlenecks.
+The priority target considers scores of **2 or higher** as positive.
 
-A higher score indicates stronger concentration of the defined diagnostic signals, but it is not itself proof that a page requires a refresh.
+This resulted in:
+
+- **151,485 priority observations**
+- **275,807 non-priority observations**
+- **35.45% overall positive proxy rate**
+
+### Model interpretation
+
+The Random Forest outperformed the Logistic Regression baseline across all three reported evaluation metrics.
+
+The observed results were:
+
+- ROC-AUC: **0.8473**
+- Average Precision: **0.8423**
+- Precision@10%: **0.9878**
+
+Compared with the baseline:
+
+- ROC-AUC increased by **0.0890**
+- Average Precision increased by **0.1840**
+- Precision@10% increased by **0.3417**
+
+This indicates that the Random Forest provided stronger discrimination and ranking concentration for the constructed priority proxy on the held-out client test set.
+
+The result supports using the Random Forest output as a prioritization mechanism, subject to the limitations of the constructed target and held-out distribution.
 
 ### Priority tiers
 
-The final scoring workflow translated the results into four practical priority tiers.
+The Random Forest probabilities were converted into four practical priority tiers using the following probability boundaries:
 
-| Priority Tier | Action | Pages |
-|---:|---|---:|
-| 0 | Monitor | 48,047 |
-| 1 | Review | 5,244 |
-| 2 | High Priority | 1,845 |
-| 3 | Urgent Review | 8,902 |
+| Probability range | Priority tier |
+|---|---|
+| ≤ 0.50 | Monitor |
+| > 0.50 to 0.75 | Review |
+| > 0.75 to 0.90 | High Priority |
+| > 0.90 | Urgent Review |
 
-These tiers make the output easier to operationalize than a raw numerical score.
+The resulting test-set distribution is:
 
-### What the analysis found
+| Priority Tier | Pages |
+|---|---:|
+| Monitor | 48,047 |
+| Review | 5,244 |
+| High Priority | 1,845 |
+| Urgent Review | 8,902 |
 
-The analysis shows that content-performance issues are not represented by one universal failure mode.
+These tiers are intended to turn the model's ranking output into an operational review queue.
 
-Visibility, clicks, sessions, and engagement capture different parts of the user journey. Separating these signals allows a reviewer to understand the type of bottleneck associated with a prioritized page rather than receiving only a single unexplained score.
+A higher tier means stronger model-estimated probability of belonging to the constructed priority class. It does not mean that a page is guaranteed to require a refresh.
 
-The resulting priority system is therefore best interpreted as a **triage mechanism for human review**.
+### Recommendation distribution
+
+The bottleneck score is also translated into an action recommendation:
+
+| Observed condition | Recommended action |
+|---|---|
+| 3–4 bottlenecks | Comprehensive review |
+| 2 bottlenecks | Priority review |
+| 1 bottleneck | Targeted review |
+| 0 bottlenecks | Monitor |
+
+Within the held-out ranked recommendation set, the resulting action counts are:
+
+| Recommended Action | Pages |
+|---|---:|
+| Priority review | 25,527 |
+| Monitor | 23,388 |
+| Targeted review | 9,627 |
+| Comprehensive review | 5,496 |
+
+These recommendations are based on observed bottleneck severity and are intended to support human review rather than automatically prescribe an intervention.
 
 ### Surprises and negative results
 
-An important negative result is the absence of an observed post-refresh outcome.
+An important finding is that the available data does not provide a directly observed refresh-needed label or a post-refresh outcome.
 
-The analysis cannot directly determine whether the highest-priority pages would actually produce the largest improvement after being refreshed.
+Therefore, the analysis cannot validate whether the pages identified as high priority would actually produce the largest improvement after a refresh.
 
-The measured result is instead that these pages show stronger evidence under the project's defined bottleneck and prioritization framework.
+The strongest supported result is that the Random Forest can rank pages matching the project's defined bottleneck-based priority proxy effectively on a held-out client test set.
 
-This distinction is important for keeping the interpretation honest.
+This is a useful decision-support result, but it is not evidence of causal content-performance improvement.
 
 ## 7. Recommendation
 
-The ranked recommendations are:
+The ranked actions supported by the final output are:
 
 ### 1. Start with Urgent Review pages
 
-Pages in the **Urgent Review** tier should be reviewed first because they have the strongest evidence under the final prioritization framework.
+Pages in the **Urgent Review** tier should receive the earliest human attention because their model-estimated probability of belonging to the priority class is above 0.90.
 
-The reviewer should inspect the underlying bottleneck before deciding on an action.
+The reviewer should inspect the underlying bottlenecks before deciding whether a content change is appropriate.
 
 ### 2. Review High Priority pages next
 
-Pages in the **High Priority** tier should form the second review queue.
+Pages in the **High Priority** tier have model-estimated probabilities above 0.75 and up to 0.90.
 
-They have sufficient evidence to justify attention but should still be manually evaluated before any content change.
+These pages should form the next review queue after Urgent Review pages.
 
-### 3. Use bottleneck reasons to guide the review
+### 3. Use the bottleneck type to guide investigation
 
-Different bottlenecks should lead to different investigative actions.
+The observed bottleneck should guide the review:
 
-- **Visibility:** investigate discoverability and exposure.
-- **Click:** inspect search-result presentation and intent alignment.
-- **Session:** investigate traffic quality and page relevance.
-- **Engagement:** inspect content structure, relevance, readability, and user experience.
+- **Visibility bottleneck:** review search visibility, discoverability, indexing, and content targeting.
+- **Click bottleneck:** review the relationship between search visibility and clicks, including title and metadata presentation.
+- **Session diagnostic:** review traffic acquisition and landing-page performance.
+- **Engagement diagnostic:** review content usefulness, page experience, and opportunities to improve engagement.
+- **Multiple bottlenecks:** prioritize for a broader content and performance review.
 
-### 4. Work through the Review tier according to capacity
+### 4. Use the Review tier according to capacity
 
-The **Review** tier should be addressed after the higher-priority pages, depending on available editorial capacity.
+Pages in the **Review** tier should be handled after higher-priority pages when additional editorial capacity is available.
 
 ### 5. Monitor lower-priority pages
 
-The **Monitor** tier should not automatically trigger a refresh.
+Pages in the **Monitor** tier should not automatically trigger a content change.
 
-Monitoring allows editorial resources to remain focused on pages with stronger evidence of potential opportunity.
+They can remain in the monitoring queue while review capacity is focused on pages with stronger observed evidence of bottlenecks.
 
 ### 6. Keep a human in the loop
 
-The score should be used as **decision-support**, not as an automatic refresh command.
+The ranking should be treated as **decision-support**.
 
-Before taking action, an editor should consider:
+A FlyRank editor should consider additional context before taking action, including:
 
 - Search demand
 - Business relevance
@@ -363,63 +480,67 @@ Before taking action, an editor should consider:
 - Content intent
 - Data sufficiency
 - Recent changes
+- Technical context
 - Potential content consolidation
-- Other contextual explanations for the observed performance
+- Editorial judgment
 
-### Confidence
+### Confidence and limits
 
-Confidence is **moderate** that the workflow provides a reproducible way to organize pages according to the defined observable bottleneck signals.
+Confidence is **moderate** that the workflow provides a reproducible way to prioritize pages according to the project's defined observable performance bottlenecks.
 
-Confidence is **lower** for predicting future improvement because the dataset does not contain verified post-refresh outcomes.
+Confidence is **lower** for predicting future performance improvement because there is no observed post-refresh outcome in the available data.
 
-The strongest defensible claim is:
+The strongest defensible conclusion is:
 
-> The scoring framework provides a directional and reproducible way to prioritize human content review using observable performance evidence.
+> The Random Forest provides a strong observed ranking signal for identifying pages that match the project's constructed bottleneck-based priority definition on the held-out client test set.
 
-The project does not claim that the recommended pages will necessarily improve after being refreshed.
+It should not be interpreted as proof that refreshing those pages will improve future performance.
 
 ## 8. Reproducibility
 
-The project is organized in the repository under the `work/` directory, with the completed capstone notebook stored under `work/notebooks/`.
+The completed capstone notebook is stored under:
 
-### Repository
+`work/notebooks/capstone.ipynb`
 
-`itsayeshaqamar/flyrank-mlinternship-ayesha`
+The repository is:
 
-### Notebook
+`https://github.com/itsayeshaqamar/flyrank-mlinternship-ayesha`
 
-The final capstone notebook is committed under:
+### Environment
 
-`work/notebooks/`
+The notebook uses Python with:
 
-### Re-run commands
+- NumPy
+- pandas
+- Matplotlib
+- scikit-learn
+- datasets
+- huggingface_hub
+- DuckDB
 
-From a fresh clone:
+The notebook installs the dataset-access dependencies directly with:
 
 ```bash
-git clone <repository-url>
-cd flyrank-mlinternship-ayesha
-pip install -r requirements.txt
-## 9. Acknowledgments & data credit
+pip install datasets huggingface_hub duckdb
 
-Built on the **FlyRank ML Internship dataset** provided for this capstone analysis.
+### Acknowledgments & data credit
 
-Data source: [https://flyrank.ai](https://flyrank.ai)
+Built on the FlyRank ML Internship dataset provided for this capstone analysis.
+
+Data source: https://flyrank.ai
 
 Crediting the data source is standard research practice and identifies the dataset used for this analysis. The public-facing report does not include client-identifying details, private queries, credentials, or other restricted information.
 
----
+Claims checklist before submitting: observed / measured / directional / decision-support
 
-> **Claims checklist before submitting:** observed / measured / directional / decision-support  
->
-> **Metrics vs. base rate:** report the task's base rate (majority-class %) next to any Precision@K or accuracy — a high score can simply reflect a high base rate. AUC / lift over baseline are the more informative discrimination measures.  
->
-> **Language:** use careful observed / measured / directional / decision-support language throughout.  
->
-> **Causal claims:** make no causal claims without an experiment or appropriate causal design.  
->
-> **Google:** do not claim to have predicted Google's algorithm.  
->
-> **Privacy:** include no client-identifying details, private queries, credentials, or restricted information.  
->
-> **Fresh rerun:** all numbers in this report must match a fresh re-run of the completed notebook.
+Metrics vs. base rate: the test-set priority-positive rate is 48.44%, while the majority-class rate is 51.56%. Precision@10% should therefore be interpreted relative to this base rate rather than as a standalone number. The Random Forest achieved 0.8473 ROC-AUC and 0.8423 Average Precision, compared with 0.7583 and 0.6583 for the Logistic Regression baseline.
+
+Language: claims throughout this report use observed, measured, directional, and decision-support framing where appropriate.
+
+Causal claims: no causal claims are made because the dataset does not contain a causal experiment or verified post-refresh outcome.
+
+Google: this project does not claim to predict Google's algorithm.
+
+Privacy: no client-identifying details, private queries, credentials, or restricted information are included in the public-facing report.
+
+Numbers: all reported metrics, split sizes, bottleneck counts, target rates, priority tiers, and recommendation counts above are taken from the completed capstone notebook.
