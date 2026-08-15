@@ -1,0 +1,2491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>CTR & Engagement Opportunity Scoring — FlyRank Capstone</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+:root{
+    --bg:#060810;
+    --bg2:#0b0f1a;
+    --card:rgba(255,255,255,.055);
+    --card2:rgba(255,255,255,.075);
+    --border:rgba(255,255,255,.10);
+    --text:#f5f7fb;
+    --muted:#929baa;
+    --soft:#c4cad5;
+    --purple:#8b7cff;
+    --blue:#55d6ff;
+    --green:#67e8a5;
+    --yellow:#f4ca70;
+    --red:#ff7890;
+    --radius:24px;
+    --max:1180px;
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+html{
+    scroll-behavior:smooth;
+}
+
+body{
+    font-family:Inter,sans-serif;
+    color:var(--text);
+    background:
+        radial-gradient(circle at 10% 5%,rgba(139,124,255,.15),transparent 28%),
+        radial-gradient(circle at 90% 20%,rgba(85,214,255,.10),transparent 25%),
+        radial-gradient(circle at 45% 90%,rgba(139,124,255,.08),transparent 30%),
+        var(--bg);
+    line-height:1.7;
+    overflow-x:hidden;
+}
+
+body:before{
+    content:"";
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    opacity:.025;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    z-index:1000;
+}
+
+a{
+    color:inherit;
+    text-decoration:none;
+}
+
+.container{
+    width:min(calc(100% - 40px),var(--max));
+    margin:auto;
+}
+
+.ambient{
+    position:fixed;
+    inset:0;
+    overflow:hidden;
+    pointer-events:none;
+    z-index:-1;
+}
+
+.orb{
+    position:absolute;
+    border-radius:50%;
+    filter:blur(100px);
+    opacity:.16;
+    animation:float 15s ease-in-out infinite;
+}
+
+.orb1{
+    width:330px;
+    height:330px;
+    background:var(--purple);
+    left:-140px;
+    top:10%;
+}
+
+.orb2{
+    width:280px;
+    height:280px;
+    background:var(--blue);
+    right:-100px;
+    top:38%;
+    animation-delay:-5s;
+}
+
+.orb3{
+    width:300px;
+    height:300px;
+    background:#9d7cff;
+    left:40%;
+    bottom:-180px;
+    animation-delay:-9s;
+}
+
+@keyframes float{
+    0%,100%{transform:translate(0,0) scale(1)}
+    50%{transform:translate(35px,-35px) scale(1.08)}
+}
+
+/* NAV */
+
+nav{
+    position:fixed;
+    top:18px;
+    left:50%;
+    transform:translateX(-50%);
+    width:min(calc(100% - 30px),1000px);
+    z-index:100;
+}
+
+.nav{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:12px 18px;
+    background:rgba(7,10,18,.68);
+    backdrop-filter:blur(24px);
+    border:1px solid var(--border);
+    border-radius:999px;
+    box-shadow:0 20px 70px rgba(0,0,0,.3);
+}
+
+.logo{
+    font-family:"Space Grotesk";
+    font-weight:700;
+    letter-spacing:-.04em;
+}
+
+.logo span{
+    color:var(--blue);
+}
+
+.links{
+    display:flex;
+    gap:22px;
+}
+
+.links a{
+    font-size:12px;
+    color:var(--muted);
+    transition:.25s;
+}
+
+.links a:hover{
+    color:#fff;
+}
+
+/* GENERAL */
+
+section{
+    padding:110px 0;
+    scroll-margin-top:90px;
+}
+
+.glass{
+    background:linear-gradient(
+        145deg,
+        rgba(255,255,255,.075),
+        rgba(255,255,255,.025)
+    );
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    backdrop-filter:blur(20px);
+    box-shadow:
+        0 25px 80px rgba(0,0,0,.20),
+        inset 0 1px rgba(255,255,255,.045);
+}
+
+.eyebrow{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    color:var(--blue);
+    text-transform:uppercase;
+    letter-spacing:.14em;
+    font-size:11px;
+    font-weight:700;
+    margin-bottom:17px;
+}
+
+.eyebrow:before{
+    content:"";
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:var(--blue);
+    box-shadow:0 0 15px var(--blue);
+}
+
+h1,h2,h3{
+    font-family:"Space Grotesk";
+    letter-spacing:-.045em;
+    line-height:1.1;
+}
+
+h2{
+    font-size:clamp(34px,5vw,55px);
+    margin-bottom:20px;
+}
+
+.intro{
+    color:var(--muted);
+    max-width:740px;
+    font-size:15px;
+}
+
+/* HERO */
+
+.hero{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    padding-top:145px;
+}
+
+.status{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:8px 13px;
+    border-radius:999px;
+    border:1px solid rgba(103,232,165,.2);
+    background:rgba(103,232,165,.06);
+    color:#b8f5d0;
+    font-size:11px;
+    font-weight:600;
+    margin-bottom:25px;
+}
+
+.status i{
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:var(--green);
+    box-shadow:0 0 15px var(--green);
+}
+
+.hero h1{
+    font-size:clamp(48px,8vw,91px);
+    max-width:1050px;
+}
+
+.gradient{
+    background:linear-gradient(
+        100deg,
+        #fff 10%,
+        #9b8fff 48%,
+        #55d6ff 90%
+    );
+    -webkit-background-clip:text;
+    color:transparent;
+}
+
+.hero p{
+    margin-top:28px;
+    max-width:760px;
+    color:var(--soft);
+    font-size:17px;
+    line-height:1.85;
+}
+
+.meta{
+    display:flex;
+    flex-wrap:wrap;
+    gap:9px;
+    margin-top:30px;
+}
+
+.pill{
+    padding:8px 13px;
+    border:1px solid var(--border);
+    background:rgba(255,255,255,.035);
+    border-radius:999px;
+    color:var(--muted);
+    font-size:11px;
+}
+
+/* HERO NUMBERS */
+
+.hero-stat-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:13px;
+    margin-top:55px;
+}
+
+.hero-stat{
+    padding:25px;
+}
+
+.hero-stat .number{
+    font-family:"Space Grotesk";
+    font-size:31px;
+    font-weight:700;
+}
+
+.hero-stat .label{
+    color:var(--muted);
+    font-size:11px;
+    margin-top:3px;
+}
+
+.hero-stat .context{
+    color:var(--soft);
+    font-size:10px;
+    margin-top:8px;
+}
+
+/* QUESTION */
+
+.question{
+    padding:45px;
+    margin-top:45px;
+    position:relative;
+    overflow:hidden;
+}
+
+.question:after{
+    content:"?";
+    position:absolute;
+    right:30px;
+    top:-55px;
+    font-family:Georgia;
+    font-size:190px;
+    color:rgba(139,124,255,.07);
+}
+
+.question p{
+    position:relative;
+    z-index:1;
+    font-family:"Space Grotesk";
+    font-size:clamp(24px,4vw,40px);
+    line-height:1.28;
+    max-width:900px;
+}
+
+/* DATA */
+
+.data-grid{
+    display:grid;
+    grid-template-columns:1.2fr .8fr;
+    gap:16px;
+    margin-top:45px;
+}
+
+.card{
+    padding:30px;
+}
+
+.card h3{
+    font-size:20px;
+    margin-bottom:10px;
+}
+
+.card p{
+    color:var(--muted);
+    font-size:13px;
+}
+
+.data-list{
+    margin-top:25px;
+}
+
+.data-row{
+    display:flex;
+    justify-content:space-between;
+    gap:20px;
+    padding:12px 0;
+    border-bottom:1px solid rgba(255,255,255,.06);
+    font-size:12px;
+}
+
+.data-row span:first-child{
+    color:var(--muted);
+}
+
+.data-row span:last-child{
+    font-weight:600;
+    text-align:right;
+}
+
+/* PIPELINE */
+
+.pipeline{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:12px;
+    margin-top:45px;
+}
+
+.step{
+    padding:25px 20px;
+}
+
+.step-num{
+    color:var(--blue);
+    font-size:10px;
+    font-weight:700;
+    letter-spacing:.12em;
+}
+
+.step h3{
+    font-size:17px;
+    margin:15px 0 8px;
+}
+
+.step p{
+    color:var(--muted);
+    font-size:11px;
+}
+
+/* MODEL */
+
+.model-layout{
+    display:grid;
+    grid-template-columns:.7fr 1.3fr;
+    gap:16px;
+    margin-top:45px;
+}
+
+.model-highlight{
+    padding:35px;
+    display:flex;
+    justify-content:center;
+    flex-direction:column;
+}
+
+.model-highlight .big{
+    font-family:"Space Grotesk";
+    font-size:65px;
+    font-weight:700;
+    background:linear-gradient(100deg,#fff,var(--purple),var(--blue));
+    -webkit-background-clip:text;
+    color:transparent;
+}
+
+.model-highlight strong{
+    font-size:15px;
+}
+
+.model-highlight p{
+    color:var(--muted);
+    font-size:12px;
+    margin-top:10px;
+}
+
+/* METRIC BARS */
+
+.metrics{
+    padding:30px;
+}
+
+.metric{
+    margin-bottom:25px;
+}
+
+.metric:last-child{
+    margin-bottom:0;
+}
+
+.metric-head{
+    display:flex;
+    justify-content:space-between;
+    font-size:12px;
+    margin-bottom:8px;
+}
+
+.metric-head span:first-child{
+    color:var(--soft);
+}
+
+.metric-head span:last-child{
+    font-family:"Space Grotesk";
+    font-weight:700;
+}
+
+.metric-track{
+    height:9px;
+    background:rgba(255,255,255,.055);
+    border-radius:99px;
+    overflow:hidden;
+}
+
+.metric-fill{
+    height:100%;
+    width:0;
+    border-radius:inherit;
+    background:linear-gradient(90deg,var(--purple),var(--blue));
+    transition:width 1.4s cubic-bezier(.2,.8,.2,1);
+}
+
+/* COMPARISON TABLE */
+
+.table-card{
+    margin-top:16px;
+    padding:28px;
+    overflow-x:auto;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    min-width:620px;
+}
+
+th{
+    color:var(--muted);
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    text-align:left;
+    padding:12px;
+    border-bottom:1px solid var(--border);
+}
+
+td{
+    padding:16px 12px;
+    border-bottom:1px solid rgba(255,255,255,.055);
+    font-size:12px;
+}
+
+td:not(:first-child){
+    font-family:"Space Grotesk";
+}
+
+.winner{
+    color:var(--green);
+    font-weight:700;
+}
+
+/* CHARTS */
+
+.chart-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    margin-top:45px;
+}
+
+.chart-card{
+    padding:30px;
+}
+
+.chart-card h3{
+    font-size:19px;
+    margin-bottom:6px;
+}
+
+.chart-sub{
+    color:var(--muted);
+    font-size:11px;
+    margin-bottom:28px;
+}
+
+.bar-row{
+    margin-bottom:18px;
+}
+
+.bar-label{
+    display:flex;
+    justify-content:space-between;
+    font-size:11px;
+    margin-bottom:7px;
+}
+
+.bar-label span:first-child{
+    color:var(--soft);
+}
+
+.bar-label span:last-child{
+    font-family:"Space Grotesk";
+    font-weight:700;
+}
+
+.bar-track{
+    height:11px;
+    border-radius:99px;
+    background:rgba(255,255,255,.055);
+    overflow:hidden;
+}
+
+.bar-fill{
+    width:0;
+    height:100%;
+    border-radius:inherit;
+    background:linear-gradient(90deg,var(--purple),var(--blue));
+    transition:width 1.4s cubic-bezier(.2,.8,.2,1);
+}
+
+/* STACKED BARS */
+
+.stacked{
+    height:32px;
+    display:flex;
+    border-radius:12px;
+    overflow:hidden;
+    margin:28px 0 18px;
+}
+
+.stack{
+    width:0;
+    transition:width 1.3s ease;
+}
+
+.stack.monitor{background:#555d70}
+.stack.review{background:#8b7cff}
+.stack.high{background:#55bce5}
+.stack.urgent{background:#67e8a5}
+
+.legend{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:11px;
+}
+
+.legend-item{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    color:var(--muted);
+    font-size:10px;
+}
+
+.dot{
+    width:8px;
+    height:8px;
+    border-radius:3px;
+}
+
+.dot.monitor{background:#555d70}
+.dot.review{background:#8b7cff}
+.dot.high{background:#55bce5}
+.dot.urgent{background:#67e8a5}
+
+/* SCORE COLUMNS */
+
+.score-chart{
+    height:220px;
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-around;
+    gap:10px;
+    border-bottom:1px solid var(--border);
+    margin-top:20px;
+    padding:0 10px;
+}
+
+.column{
+    width:17%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-end;
+    height:100%;
+}
+
+.column-value{
+    font-family:"Space Grotesk";
+    font-size:10px;
+    margin-bottom:7px;
+}
+
+.column-bar{
+    width:100%;
+    height:0;
+    border-radius:8px 8px 0 0;
+    background:linear-gradient(180deg,var(--blue),var(--purple));
+    transition:height 1.2s cubic-bezier(.2,.8,.2,1);
+}
+
+.column-label{
+    color:var(--muted);
+    font-size:10px;
+    margin-top:8px;
+}
+
+/* FINDINGS */
+
+.findings{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:14px;
+    margin-top:45px;
+}
+
+.finding{
+    padding:28px;
+}
+
+.icon{
+    width:37px;
+    height:37px;
+    display:grid;
+    place-items:center;
+    border-radius:11px;
+    background:rgba(139,124,255,.09);
+    border:1px solid rgba(139,124,255,.15);
+    color:var(--blue);
+    font-family:"Space Grotesk";
+    font-size:11px;
+    margin-bottom:20px;
+}
+
+.finding h3{
+    font-size:18px;
+    margin-bottom:9px;
+}
+
+.finding p{
+    color:var(--muted);
+    font-size:12px;
+}
+
+/* RECOMMENDATIONS */
+
+.recommendations{
+    margin-top:45px;
+    display:grid;
+    gap:12px;
+}
+
+.recommendation{
+    display:grid;
+    grid-template-columns:55px 1fr;
+    gap:18px;
+    align-items:center;
+    padding:23px;
+}
+
+.rec-num{
+    font-family:"Space Grotesk";
+    color:var(--blue);
+    font-size:21px;
+}
+
+.recommendation h3{
+    font-size:16px;
+}
+
+.recommendation p{
+    color:var(--muted);
+    font-size:12px;
+    margin-top:4px;
+}
+
+/* LIMITATIONS */
+
+.limitations{
+    margin-top:45px;
+    padding:30px;
+}
+
+.limitations ul{
+    list-style:none;
+    display:grid;
+    gap:13px;
+}
+
+.limitations li{
+    color:var(--muted);
+    font-size:13px;
+    padding-left:20px;
+    position:relative;
+}
+
+.limitations li:before{
+    content:"—";
+    position:absolute;
+    left:0;
+    color:var(--blue);
+}
+
+/* ARTIFACTS */
+
+.artifacts{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:14px;
+    margin-top:45px;
+}
+
+.artifact{
+    padding:26px;
+}
+
+.artifact-label{
+    color:var(--blue);
+    font-size:9px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    font-weight:700;
+}
+
+.artifact h3{
+    font-size:17px;
+    margin-top:13px;
+}
+
+.artifact p{
+    color:var(--muted);
+    font-size:11px;
+    margin-top:7px;
+}
+
+/* FOOTER */
+
+footer{
+    padding:70px 0 45px;
+    border-top:1px solid rgba(255,255,255,.07);
+}
+
+.footer{
+    display:flex;
+    justify-content:space-between;
+    gap:30px;
+}
+
+.footer-title{
+    font-family:"Space Grotesk";
+    font-size:20px;
+}
+
+.footer-note{
+    color:var(--muted);
+    font-size:11px;
+    max-width:650px;
+    margin-top:7px;
+}
+
+.footer-right{
+    color:var(--muted);
+    font-size:10px;
+    text-align:right;
+}
+
+/* REVEAL */
+
+.reveal{
+    opacity:0;
+    transform:translateY(25px);
+    transition:opacity .8s ease,transform .8s cubic-bezier(.2,.8,.2,1);
+}
+
+.reveal.visible{
+    opacity:1;
+    transform:translateY(0);
+}
+
+/* RESPONSIVE */
+
+@media(max-width:900px){
+
+    .links{
+        display:none;
+    }
+
+    .hero-stat-grid{
+        grid-template-columns:1fr 1fr 1fr;
+    }
+
+    .data-grid,
+    .model-layout{
+        grid-template-columns:1fr;
+    }
+
+    .pipeline{
+        grid-template-columns:1fr 1fr;
+    }
+
+    .chart-grid{
+        grid-template-columns:1fr;
+    }
+
+    .findings,
+    .artifacts{
+        grid-template-columns:1fr 1fr;
+    }
+}
+
+@media(max-width:600px){
+
+    .container{
+        width:calc(100% - 26px);
+    }
+
+    section{
+        padding:80px 0;
+    }
+
+    .hero{
+        padding-top:130px;
+    }
+
+    .hero h1{
+        font-size:47px;
+    }
+
+    .hero p{
+        font-size:14px;
+    }
+
+    .hero-stat-grid{
+        grid-template-columns:1fr;
+    }
+
+    .question{
+        padding:28px;
+    }
+
+    .pipeline,
+    .findings,
+    .artifacts{
+        grid-template-columns:1fr;
+    }
+
+    .footer{
+        flex-direction:column;
+    }
+
+    .footer-right{
+        text-align:left;
+    }
+}
+
+@media(prefers-reduced-motion:reduce){
+
+    *,
+    *:before,
+    *:after{
+        animation:none!important;
+        transition:none!important;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="ambient">
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="orb orb3"></div>
+</div>
+
+<!-- NAVIGATION -->
+
+<nav>
+    <div class="nav">
+        <div class="logo">
+            FlyRank<span> / Research</span>
+        </div>
+
+        <div class="links">
+            <a href="#research">Research</a>
+            <a href="#data">Data</a>
+            <a href="#method">Method</a>
+            <a href="#results">Results</a>
+            <a href="#recommendations">Actions</a>
+        </div>
+    </div>
+</nav>
+
+
+<main class="container">
+
+<!-- HERO -->
+
+<section class="hero">
+
+<div class="reveal">
+
+    <div class="status">
+        <i></i>
+        Completed Capstone · 15 August 2026
+    </div>
+
+    <div class="eyebrow">
+        CTR / Engagement Opportunity Scoring
+    </div>
+
+    <h1>
+        Turning content
+        <span class="gradient">performance signals</span>
+        into a review queue.
+    </h1>
+
+    <p>
+        An observed, directional machine-learning framework for prioritizing
+        content pages for human review when editorial capacity is limited.
+        The system combines search-performance and engagement signals into
+        a transparent priority score rather than making causal claims about
+        future content performance.
+    </p>
+
+    <div class="meta">
+        <span class="pill">Ayesha Qamar</span>
+        <span class="pill">FlyRank ML Internship</span>
+        <span class="pill">Random Forest</span>
+        <span class="pill">Client-held-out evaluation</span>
+        <span class="pill">Decision Support</span>
+    </div>
+
+    <div class="hero-stat-grid">
+
+        <div class="hero-stat glass">
+            <div class="number">427,292</div>
+            <div class="label">Page-level observations</div>
+            <div class="context">Aggregated analytical dataset</div>
+        </div>
+
+        <div class="hero-stat glass">
+            <div class="number">64,038</div>
+            <div class="label">Held-out test pages</div>
+            <div class="context">20% client-grouped test split</div>
+        </div>
+
+        <div class="hero-stat glass">
+            <div class="number">98.78%</div>
+            <div class="label">Precision@10%</div>
+            <div class="context">Random Forest on held-out test set</div>
+        </div>
+
+    </div>
+
+</div>
+
+</section>
+
+
+<!-- RESEARCH QUESTION -->
+
+<section id="research">
+
+    <div class="eyebrow reveal">
+        01 · Research Question
+    </div>
+
+    <h2 class="reveal">
+        What decision does the model support?
+    </h2>
+
+    <p class="intro reveal">
+        The project focuses on a practical allocation-of-effort problem:
+        deciding which content pages should receive attention first when
+        editorial review capacity is limited.
+    </p>
+
+    <div class="question glass reveal">
+
+        <p>
+            Which content pages should a content team review first when
+            review capacity is limited?
+        </p>
+
+    </div>
+
+</section>
+
+
+<!-- DATA -->
+
+<section id="data">
+
+    <div class="eyebrow reveal">
+        02 · Data
+    </div>
+
+    <h2 class="reveal">
+        A page-level performance evidence layer.
+    </h2>
+
+    <p class="intro reveal">
+        The analysis uses the FlyRank pseudonymized warehouse release,
+        aggregated to one row per client and content page.
+    </p>
+
+
+    <div class="data-grid">
+
+        <div class="card glass reveal">
+
+            <h3>
+                Dataset profile
+            </h3>
+
+            <p>
+                Daily content-performance observations were aggregated into
+                page-level analytical records. The release was exported
+                July 3, 2026, with daily facts running through June 30, 2026.
+            </p>
+
+            <div class="data-list">
+
+                <div class="data-row">
+                    <span>Source</span>
+                    <span>FlyRank pseudonymized warehouse</span>
+                </div>
+
+                <div class="data-row">
+                    <span>Page-level observations</span>
+                    <span>427,292</span>
+                </div>
+
+                <div class="data-row">
+                    <span>Aggregated fields</span>
+                    <span>13</span>
+                </div>
+
+                <div class="data-row">
+                    <span>Analysis unit</span>
+                    <span>Client × content page</span>
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="card glass reveal">
+
+            <h3>
+                Performance signals
+            </h3>
+
+            <div class="data-list">
+
+                <div class="data-row">
+                    <span>Search</span>
+                    <span>Impressions</span>
+                </div>
+
+                <div class="data-row">
+                    <span>Search</span>
+                    <span>Clicks / CTR</span>
+                </div>
+
+                <div class="data-row">
+                    <span>Traffic</span>
+                    <span>Sessions</span>
+                </div>
+
+                <div class="data-row">
+                    <span>Engagement</span>
+                    <span>Engagement rate</span>
+                </div>
+
+                <div class="data-row">
+                    <span>Additional features</span>
+                    <span>7 model inputs</span>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- METHODOLOGY -->
+
+<section id="method">
+
+    <div class="eyebrow reveal">
+        03 · Methodology
+    </div>
+
+    <h2 class="reveal">
+        From observations to priority.
+    </h2>
+
+    <p class="intro reveal">
+        The workflow deliberately separates target-defining variables from
+        model features and evaluates performance across client-held-out data.
+    </p>
+
+
+    <div class="pipeline">
+
+        <div class="step glass reveal">
+            <div class="step-num">01 / DATA</div>
+            <h3>Aggregate</h3>
+            <p>
+                Convert daily performance facts into page-level observations.
+            </p>
+        </div>
+
+        <div class="step glass reveal">
+            <div class="step-num">02 / SIGNAL</div>
+            <h3>Diagnose</h3>
+            <p>
+                Detect visibility, click, session and engagement bottlenecks.
+            </p>
+        </div>
+
+        <div class="step glass reveal">
+            <div class="step-num">03 / TARGET</div>
+            <h3>Define</h3>
+            <p>
+                Mark pages with at least two bottlenecks as priority cases.
+            </p>
+        </div>
+
+        <div class="step glass reveal">
+            <div class="step-num">04 / MODEL</div>
+            <h3>Rank</h3>
+            <p>
+                Compare Random Forest against Logistic Regression.
+            </p>
+        </div>
+
+        <div class="step glass reveal">
+            <div class="step-num">05 / ACTION</div>
+            <h3>Prioritize</h3>
+            <p>
+                Translate probabilities into practical review tiers.
+            </p>
+        </div>
+
+    </div>
+
+
+    <div class="card glass reveal" style="margin-top:16px;">
+
+        <h3>
+            Leakage control
+        </h3>
+
+        <p>
+            Target-defining variables — impressions, clicks, CTR, sessions,
+            engagement rate and bottleneck score — were excluded from the
+            feature matrix. Client and content identifiers were also excluded.
+        </p>
+
+        <div class="data-list">
+
+            <div class="data-row">
+                <span>Model features</span>
+                <span>7</span>
+            </div>
+
+            <div class="data-row">
+                <span>Leakage overlap</span>
+                <span style="color:var(--green)">set()</span>
+            </div>
+
+            <div class="data-row">
+                <span>Leakage check</span>
+                <span style="color:var(--green)">Passed</span>
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- RESULTS -->
+
+<section id="results">
+
+    <div class="eyebrow reveal">
+        04 · Model Results
+    </div>
+
+    <h2 class="reveal">
+        The Random Forest concentrates priority cases at the top.
+    </h2>
+
+    <p class="intro reveal">
+        Both models were evaluated on the same client-held-out test set.
+        The Random Forest provided stronger discrimination and ranking
+        concentration across all three reported metrics.
+    </p>
+
+
+    <div class="model-layout">
+
+        <div class="model-highlight glass reveal">
+
+            <div class="big">
+                0.9878
+            </div>
+
+            <strong>
+                Precision@10%
+            </strong>
+
+            <p>
+                Among the highest-ranked 10% of held-out test pages,
+                98.78% were positive under the constructed bottleneck-based
+                priority definition.
+            </p>
+
+        </div>
+
+
+        <div class="metrics glass reveal">
+
+            <div class="metric">
+
+                <div class="metric-head">
+                    <span>Random Forest · ROC-AUC</span>
+                    <span>0.8473</span>
+                </div>
+
+                <div class="metric-track">
+                    <div class="metric-fill"
+                         data-width="84.73%"></div>
+                </div>
+
+            </div>
+
+
+            <div class="metric">
+
+                <div class="metric-head">
+                    <span>Random Forest · Average Precision</span>
+                    <span>0.8423</span>
+                </div>
+
+                <div class="metric-track">
+                    <div class="metric-fill"
+                         data-width="84.23%"></div>
+                </div>
+
+            </div>
+
+
+            <div class="metric">
+
+                <div class="metric-head">
+                    <span>Random Forest · Precision@10%</span>
+                    <span>0.9878</span>
+                </div>
+
+                <div class="metric-track">
+                    <div class="metric-fill"
+                         data-width="98.78%"></div>
+                </div>
+
+            </div>
+
+
+            <div class="metric">
+
+                <div class="metric-head">
+                    <span>Logistic Regression · ROC-AUC</span>
+                    <span>0.7583</span>
+                </div>
+
+                <div class="metric-track">
+                    <div class="metric-fill"
+                         data-width="75.83%"></div>
+                </div>
+
+            </div>
+
+
+            <div class="metric">
+
+                <div class="metric-head">
+                    <span>Logistic Regression · Average Precision</span>
+                    <span>0.6583</span>
+                </div>
+
+                <div class="metric-track">
+                    <div class="metric-fill"
+                         data-width="65.83%"></div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="table-card glass reveal">
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Model</th>
+                    <th>ROC-AUC</th>
+                    <th>Average Precision</th>
+                    <th>Precision@10%</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                <tr>
+                    <td>Logistic Regression</td>
+                    <td>0.7583</td>
+                    <td>0.6583</td>
+                    <td>0.6461</td>
+                </tr>
+
+                <tr>
+                    <td><strong>Random Forest</strong></td>
+                    <td class="winner">0.8473</td>
+                    <td class="winner">0.8423</td>
+                    <td class="winner">0.9878</td>
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+
+<!-- VISUAL ANALYSIS -->
+
+<section>
+
+    <div class="eyebrow reveal">
+        05 · Visual Analysis
+    </div>
+
+    <h2 class="reveal">
+        What the data is telling us.
+    </h2>
+
+    <p class="intro reveal">
+        The following visuals summarize the observed bottleneck structure,
+        model performance, and operational priority distribution.
+    </p>
+
+
+    <div class="chart-grid">
+
+        <!-- MODEL COMPARISON -->
+
+        <div class="chart-card glass reveal">
+
+            <h3>
+                Model performance
+            </h3>
+
+            <div class="chart-sub">
+                Higher is better across all three reported metrics.
+            </div>
+
+
+            <div class="bar-row">
+
+                <div class="bar-label">
+                    <span>RF · ROC-AUC</span>
+                    <span>0.8473</span>
+                </div>
+
+                <div class="bar-track">
+                    <div class="bar-fill"
+                         data-width="84.73%"></div>
+                </div>
+
+            </div>
+
+
+            <div class="bar-row">
+
+                <div class="bar-label">
+                    <span>LR · ROC-AUC</span>
+                    <span>0.7583</span>
+                </div>
+
+                <div class="bar-track">
+                    <div class="bar-fill"
+                         data-width="75.83%"></div>
+                </div>
+
+            </div>
+
+
+            <div class="bar-row">
+
+                <div class="bar-label">
+                    <span>RF · Average Precision</span>
+                    <span>0.8423</span>
+                </div>
+
+                <div class="bar-track">
+                    <div class="bar-fill"
+                         data-width="84.23%"></div>
+                </div>
+
+            </div>
+
+
+            <div class="bar-row">
+
+                <div class="bar-label">
+                    <span>LR · Average Precision</span>
+                    <span>0.6583</span>
+                </div>
+
+                <div class="bar-track">
+                    <div class="bar-fill"
+                         data-width="65.83%"></div>
+                </div>
+
+            </div>
+
+
+            <div class="bar-row">
+
+                <div class="bar-label">
+                    <span>RF · Precision@10%</span>
+                    <span>0.9878</span>
+                </div>
+
+                <div class="bar-track">
+                    <div class="bar-fill"
+                         data-width="98.78%"></div>
+                </div>
+
+            </div>
+
+
+            <div class="bar-row">
+
+                <div class="bar-label">
+                    <span>LR · Precision@10%</span>
+                    <span>0.6461</span>
+                </div>
+
+                <div class="bar-track">
+                    <div class="bar-fill"
+                         data-width="64.61%"></div>
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- BOTTLENECK -->
+
+        <div class="chart-card glass reveal">
+
+            <h3>
+                Bottleneck categories
+            </h3>
+
+            <div class="chart-sub">
+                Pages can appear in multiple categories.
+            </div>
+
+
+            <div class="bar-row">
+
+                <div class="bar-label">
+                    <span>Click bottleneck</span>
+                    <span>197,516</span>
+                </div>
+
+                <div class="bar-track">
+                    <div class="bar-fill"
+                         data-width="100%"></div>
+                </div>
+
+            </div>
+
+
+            <div class="bar-row">
+
+                <div class="bar-label">
+                    <span>Engagement diagnostic</span>
+                    <span>167,490</span>
+                </div>
+
+                <div class="bar-track">
+                    <div class="bar-fill"
+                         data-width="84.8%"></div>
+                </div>
+
+            </div>
+
+
+            <div class="bar-row">
+
+                <div class="bar-label">
+                    <span>Visibility bottleneck</span>
+                    <span>76,675</span>
+                </div>
+
+                <div class="bar-track">
+                    <div class="bar-fill"
+                         data-width="38.82%"></div>
+                </div>
+
+            </div>
+
+
+            <div class="bar-row">
+
+                <div class="bar-label">
+                    <span>Session diagnostic</span>
+                    <span>39,192</span>
+                </div>
+
+                <div class="bar-track">
+                    <div class="bar-fill"
+                         data-width="19.84%"></div>
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- BOTTLENECK SCORE -->
+
+        <div class="chart-card glass reveal">
+
+            <h3>
+                Bottleneck score distribution
+            </h3>
+
+            <div class="chart-sub">
+                Number of observations by simultaneous diagnostic conditions.
+            </div>
+
+
+            <div class="score-chart">
+
+                <div class="column">
+
+                    <div class="column-value">150,340</div>
+
+                    <div class="column-bar"
+                         data-height="100%"></div>
+
+                    <div class="column-label">0</div>
+
+                </div>
+
+
+                <div class="column">
+
+                    <div class="column-value">125,467</div>
+
+                    <div class="column-bar"
+                         data-height="83.46%"></div>
+
+                    <div class="column-label">1</div>
+
+                </div>
+
+
+                <div class="column">
+
+                    <div class="column-value">110,882</div>
+
+                    <div class="column-bar"
+                         data-height="73.77%"></div>
+
+                    <div class="column-label">2</div>
+
+                </div>
+
+
+                <div class="column">
+
+                    <div class="column-value">28,770</div>
+
+                    <div class="column-bar"
+                         data-height="19.14%"></div>
+
+                    <div class="column-label">3</div>
+
+                </div>
+
+
+                <div class="column">
+
+                    <div class="column-value">11,833</div>
+
+                    <div class="column-bar"
+                         data-height="7.87%"></div>
+
+                    <div class="column-label">4</div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- TRAIN TEST -->
+
+        <div class="chart-card glass reveal">
+
+            <h3>
+                Train / test distribution
+            </h3>
+
+            <div class="chart-sub">
+                Priority-positive proxy rate.
+            </div>
+
+
+            <div class="bar-row">
+
+                <div class="bar-label">
+                    <span>Training set</span>
+                    <span>33.16%</span>
+                </div>
+
+                <div class="bar-track">
+                    <div class="bar-fill"
+                         data-width="33.16%"></div>
+                </div>
+
+            </div>
+
+
+            <div class="bar-row">
+
+                <div class="bar-label">
+                    <span>Test set</span>
+                    <span>48.44%</span>
+                </div>
+
+                <div class="bar-track">
+                    <div class="bar-fill"
+                         data-width="48.44%"></div>
+                </div>
+
+            </div>
+
+
+            <div class="card"
+                 style="padding:20px;margin-top:25px;background:rgba(255,255,255,.025);">
+
+                <div class="data-row">
+                    <span>Training observations</span>
+                    <span>363,254</span>
+                </div>
+
+                <div class="data-row">
+                    <span>Test observations</span>
+                    <span>64,038</span>
+                </div>
+
+                <div class="data-row">
+                    <span>Shared clients</span>
+                    <span style="color:var(--green)">0</span>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- PRIORITY TIERS -->
+
+<section>
+
+    <div class="eyebrow reveal">
+        06 · Decision Layer
+    </div>
+
+    <h2 class="reveal">
+        From probability to operational priority.
+    </h2>
+
+    <p class="intro reveal">
+        Random Forest probabilities are translated into four practical
+        review tiers. The tiers organize attention; they do not guarantee
+        that a page requires a refresh.
+    </p>
+
+
+    <div class="chart-card glass reveal"
+         style="margin-top:45px;">
+
+        <div class="stacked">
+
+            <div class="stack monitor"
+                 data-width="75%"></div>
+
+            <div class="stack review"
+                 data-width="8.19%"></div>
+
+            <div class="stack high"
+                 data-width="2.88%"></div>
+
+            <div class="stack urgent"
+                 data-width="13.91%"></div>
+
+        </div>
+
+
+        <div class="legend">
+
+            <div class="legend-item">
+                <i class="dot monitor"></i>
+                Monitor · 48,047
+            </div>
+
+            <div class="legend-item">
+                <i class="dot review"></i>
+                Review · 5,244
+            </div>
+
+            <div class="legend-item">
+                <i class="dot high"></i>
+                High Priority · 1,845
+            </div>
+
+            <div class="legend-item">
+                <i class="dot urgent"></i>
+                Urgent Review · 8,902
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="data-grid">
+
+        <div class="card glass reveal">
+
+            <h3>
+                Probability boundaries
+            </h3>
+
+            <div class="data-list">
+
+                <div class="data-row">
+                    <span>Monitor</span>
+                    <span>≤ 0.50</span>
+                </div>
+
+                <div class="data-row">
+                    <span>Review</span>
+                    <span>&gt; 0.50 – 0.75</span>
+                </div>
+
+                <div class="data-row">
+                    <span>High Priority</span>
+                    <span>&gt; 0.75 – 0.90</span>
+                </div>
+
+                <div class="data-row">
+                    <span>Urgent Review</span>
+                    <span>&gt; 0.90</span>
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="card glass reveal">
+
+            <h3>
+                Proxy target
+            </h3>
+
+            <p>
+                A page is considered a priority case when its observed
+                bottleneck score is greater than or equal to 2.
+            </p>
+
+            <div class="data-list">
+
+                <div class="data-row">
+                    <span>Priority</span>
+                    <span>151,485</span>
+                </div>
+
+                <div class="data-row">
+                    <span>Non-priority</span>
+                    <span>275,807</span>
+                </div>
+
+                <div class="data-row">
+                    <span>Overall positive rate</span>
+                    <span>35.45%</span>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- FINDINGS -->
+
+<section>
+
+    <div class="eyebrow reveal">
+        07 · Findings
+    </div>
+
+    <h2 class="reveal">
+        What the evaluation supports.
+    </h2>
+
+
+    <div class="findings">
+
+        <div class="finding glass reveal">
+
+            <div class="icon">01</div>
+
+            <h3>
+                Stronger ranking signal
+            </h3>
+
+            <p>
+                The Random Forest improved ROC-AUC from 0.7583 to 0.8473
+                and Average Precision from 0.6583 to 0.8423.
+            </p>
+
+        </div>
+
+
+        <div class="finding glass reveal">
+
+            <div class="icon">02</div>
+
+            <h3>
+                Strong top-of-list concentration
+            </h3>
+
+            <p>
+                Precision@10% reached 0.9878, compared with 0.6461 for
+                Logistic Regression.
+            </p>
+
+        </div>
+
+
+        <div class="finding glass reveal">
+
+            <div class="icon">03</div>
+
+            <h3>
+                Observable bottlenecks
+            </h3>
+
+            <p>
+                Click and engagement bottlenecks were the most frequently
+                observed diagnostic conditions.
+            </p>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- RECOMMENDATIONS -->
+
+<section id="recommendations">
+
+    <div class="eyebrow reveal">
+        08 · Recommendations
+    </div>
+
+    <h2 class="reveal">
+        A human-in-the-loop review workflow.
+    </h2>
+
+    <p class="intro reveal">
+        The ranking should guide where investigation begins, while editors
+        retain responsibility for deciding whether an intervention is
+        appropriate.
+    </p>
+
+
+    <div class="recommendations">
+
+        <div class="recommendation glass reveal">
+
+            <div class="rec-num">01</div>
+
+            <div>
+                <h3>Start with Urgent Review</h3>
+
+                <p>
+                    Review pages with model-estimated probability above 0.90
+                    first and inspect their underlying bottlenecks.
+                </p>
+            </div>
+
+        </div>
+
+
+        <div class="recommendation glass reveal">
+
+            <div class="rec-num">02</div>
+
+            <div>
+                <h3>Review High Priority next</h3>
+
+                <p>
+                    Pages above 0.75 and up to 0.90 form the next review queue
+                    when capacity allows.
+                </p>
+            </div>
+
+        </div>
+
+
+        <div class="recommendation glass reveal">
+
+            <div class="rec-num">03</div>
+
+            <div>
+                <h3>Investigate the bottleneck type</h3>
+
+                <p>
+                    Use visibility, click, session, and engagement diagnostics
+                    to guide the human investigation.
+                </p>
+            </div>
+
+        </div>
+
+
+        <div class="recommendation glass reveal">
+
+            <div class="rec-num">04</div>
+
+            <div>
+                <h3>Keep lower tiers in monitoring</h3>
+
+                <p>
+                    Monitor lower-priority pages instead of automatically
+                    triggering content changes.
+                </p>
+            </div>
+
+        </div>
+
+
+        <div class="recommendation glass reveal">
+
+            <div class="rec-num">05</div>
+
+            <div>
+                <h3>Validate with future outcomes</h3>
+
+                <p>
+                    Post-refresh outcomes would allow stronger evaluation of
+                    whether prioritization predicts actual improvement.
+                </p>
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- LIMITATIONS -->
+
+<section>
+
+    <div class="eyebrow reveal">
+        09 · Limitations
+    </div>
+
+    <h2 class="reveal">
+        What this model does not claim.
+    </h2>
+
+    <div class="limitations glass reveal">
+
+        <ul>
+
+            <li>
+                The priority target is a constructed proxy, not an observed
+                refresh-needed label.
+            </li>
+
+            <li>
+                There is no verified post-refresh outcome in the available
+                dataset.
+            </li>
+
+            <li>
+                The evaluation therefore cannot establish that refreshing
+                prioritized pages will improve CTR, traffic, rankings, or
+                engagement.
+            </li>
+
+            <li>
+                The project does not predict Google's ranking algorithm.
+            </li>
+
+            <li>
+                The test-set priority rate of 48.44% is higher than the
+                training rate of 33.16%, creating distribution-shift
+                uncertainty.
+            </li>
+
+            <li>
+                Tied model probabilities mean very small differences between
+                adjacent ranks should not be treated as meaningful impact
+                differences.
+            </li>
+
+        </ul>
+
+    </div>
+
+</section>
+
+
+<!-- REPRODUCIBILITY -->
+
+<section>
+
+    <div class="eyebrow reveal">
+        10 · Reproducibility
+    </div>
+
+    <h2 class="reveal">
+        Designed to be inspectable.
+    </h2>
+
+    <div class="artifacts">
+
+        <div class="artifact glass reveal">
+
+            <div class="artifact-label">
+                Notebook
+            </div>
+
+            <h3>
+                capstone.ipynb
+            </h3>
+
+            <p>
+                End-to-end analysis covering data preparation, bottleneck
+                construction, modeling, evaluation, and recommendations.
+            </p>
+
+        </div>
+
+
+        <div class="artifact glass reveal">
+
+            <div class="artifact-label">
+                Model
+            </div>
+
+            <h3>
+                Random Forest
+            </h3>
+
+            <p>
+                200 estimators, max depth 12, minimum leaf size 20,
+                balanced class weighting.
+            </p>
+
+        </div>
+
+
+        <div class="artifact glass reveal">
+
+            <div class="artifact-label">
+                Environment
+            </div>
+
+            <h3>
+                Python ML Stack
+            </h3>
+
+            <p>
+                NumPy, pandas, Matplotlib, scikit-learn, datasets,
+                huggingface_hub and DuckDB.
+            </p>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- FINAL CONCLUSION -->
+
+<section>
+
+    <div class="question glass reveal">
+
+        <div class="eyebrow">
+            Final conclusion
+        </div>
+
+        <p>
+            The Random Forest provides a strong observed ranking signal for
+            identifying pages that match the project's constructed
+            bottleneck-based priority definition on the held-out client
+            test set.
+        </p>
+
+        <p style="
+            font-family:Inter;
+            font-size:14px;
+            line-height:1.8;
+            color:var(--muted);
+            margin-top:25px;
+        ">
+            The result supports content-review prioritization, but should not
+            be interpreted as evidence that refreshing prioritized pages will
+            cause future performance improvement.
+        </p>
+
+    </div>
+
+</section>
+
+</main>
+
+
+<!-- FOOTER -->
+
+<footer>
+
+<div class="container footer">
+
+    <div>
+
+        <div class="footer-title">
+            FlyRank ML Internship Capstone
+        </div>
+
+        <div class="footer-note">
+            Built on the FlyRank ML Internship dataset provided for this
+            capstone analysis. The public-facing presentation excludes
+            client-identifying details, private queries, credentials, and
+            restricted business information.
+        </div>
+
+    </div>
+
+    <div class="footer-right">
+        Ayesha Qamar<br>
+        CTR / Engagement Opportunity Scoring<br>
+        15 August 2026
+    </div>
+
+</div>
+
+</footer>
+
+
+<script>
+
+/* ==========================
+   SCROLL REVEAL
+========================== */
+
+const revealItems =
+    document.querySelectorAll(".reveal");
+
+const revealObserver =
+    new IntersectionObserver(
+        entries => {
+
+            entries.forEach(entry => {
+
+                if(entry.isIntersecting){
+
+                    entry.target.classList.add("visible");
+
+                    revealObserver.unobserve(
+                        entry.target
+                    );
+
+                }
+
+            });
+
+        },
+        {threshold:.12}
+    );
+
+revealItems.forEach(
+    item => revealObserver.observe(item)
+);
+
+
+/* ==========================
+   HORIZONTAL BARS
+========================== */
+
+const bars =
+    document.querySelectorAll(
+        ".metric-fill,.bar-fill"
+    );
+
+const barObserver =
+    new IntersectionObserver(
+        entries => {
+
+            entries.forEach(entry => {
+
+                if(entry.isIntersecting){
+
+                    const element =
+                        entry.target;
+
+                    element.style.width =
+                        element.dataset.width;
+
+                    barObserver.unobserve(
+                        element
+                    );
+
+                }
+
+            });
+
+        },
+        {threshold:.25}
+    );
+
+bars.forEach(
+    bar => barObserver.observe(bar)
+);
+
+
+/* ==========================
+   PRIORITY STACK
+========================== */
+
+const stacks =
+    document.querySelectorAll(".stack");
+
+const stackObserver =
+    new IntersectionObserver(
+        entries => {
+
+            entries.forEach(entry => {
+
+                if(entry.isIntersecting){
+
+                    entry.target.style.width =
+                        entry.target.dataset.width;
+
+                    stackObserver.unobserve(
+                        entry.target
+                    );
+
+                }
+
+            });
+
+        },
+        {threshold:.3}
+    );
+
+stacks.forEach(
+    stack => stackObserver.observe(stack)
+);
+
+
+/* ==========================
+   SCORE COLUMNS
+========================== */
+
+const columns =
+    document.querySelectorAll(
+        ".column-bar"
+    );
+
+const columnObserver =
+    new IntersectionObserver(
+        entries => {
+
+            entries.forEach(entry => {
+
+                if(entry.isIntersecting){
+
+                    entry.target.style.height =
+                        entry.target.dataset.height;
+
+                    columnObserver.unobserve(
+                        entry.target
+                    );
+
+                }
+
+            });
+
+        },
+        {threshold:.3}
+    );
+
+columns.forEach(
+    column => columnObserver.observe(column)
+);
+
+
+/* ==========================
+   ACTIVE NAV
+========================== */
+
+const sections =
+    document.querySelectorAll(
+        "section[id]"
+    );
+
+const navLinks =
+    document.querySelectorAll(
+        ".links a"
+    );
+
+window.addEventListener(
+    "scroll",
+    () => {
+
+        let current = "";
+
+        sections.forEach(section => {
+
+            const top =
+                section.offsetTop - 150;
+
+            if(
+                window.scrollY >= top
+            ){
+                current =
+                    section.id;
+            }
+
+        });
+
+        navLinks.forEach(link => {
+
+            link.style.color =
+                link.getAttribute("href")
+                === "#" + current
+                ? "#ffffff"
+                : "";
+
+        });
+
+    },
+    {passive:true}
+);
+
+</script>
+
+</body>
+</html>
